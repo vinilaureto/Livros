@@ -10,7 +10,10 @@ import android.view.View
 import android.widget.AdapterView
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
+import com.google.android.material.snackbar.Snackbar
 import com.vinilaureto.livros.adapter.BookAdapter
+import com.vinilaureto.livros.controller.BookController
 import com.vinilaureto.livros.databinding.ActivityMainBinding
 import com.vinilaureto.livros.entities.Book
 
@@ -25,8 +28,16 @@ class MainActivity : AppCompatActivity() {
     private lateinit var bookActivityResultLauncher: ActivityResultLauncher<Intent>
     private lateinit var editBookActivityResultLauncher: ActivityResultLauncher<Intent>
 
+    private val bookController: BookController by lazy {
+        BookController(this)
+    }
+
     // DataSource
-    private val bookList: MutableList<Book> = mutableListOf();
+    private var bookList: MutableList<Book> = mutableListOf();
+
+    private fun prepareBookList() {
+        bookList = bookController.findAllBooks()
+    }
 
     // Adapter
 //    private val booksAdapter: ArrayAdapter<String> by lazy {
@@ -56,6 +67,7 @@ class MainActivity : AppCompatActivity() {
                 if (book != null) {
                     bookList.add(book)
                     booksAdapter.notifyDataSetChanged()
+                    bookController.newBook(book)
                     //booksAdapter.add(book)
                 }
             }
@@ -68,6 +80,7 @@ class MainActivity : AppCompatActivity() {
                     if (position != null && position != -1) {
                         bookList[position] = this
                         booksAdapter.notifyDataSetChanged()
+                        bookController.updateBook(this)
                     }
                 }
             }
@@ -85,16 +98,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // only for dev
-    private fun prepareBookList() {
-        for (i in 1..5) {
-            bookList.add(
-                Book(
-                    "Título ${i}", "Isbn ${i}", "Autor ${i}", "edutora ${i}", i, i
-                )
-            )
-        }
-    }
+
 
 //    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
 //        menuInflater.inflate(R.menu.menu_main, menu)
@@ -119,6 +123,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onContextItemSelected(item: MenuItem): Boolean {
         val position = (item.menuInfo as AdapterView.AdapterContextMenuInfo).position
+        val book = bookList[position]
 
         return when(item.itemId) {
             R.id.editItemMi -> {
@@ -132,8 +137,19 @@ class MainActivity : AppCompatActivity() {
                 true
             }
             R.id.removeItemMi -> {
-                bookList.removeAt(position)
-                booksAdapter.notifyDataSetChanged()
+                with(AlertDialog.Builder(this)) {
+                    setMessage("Apagar ${book.title}?")
+                    setPositiveButton("Sim") { _, _ ->
+                        bookList.removeAt(position)
+                        booksAdapter.notifyDataSetChanged()
+                        bookController.deleteBookByTitle(book.title)
+                        Snackbar.make(activityMainBinding.root, "Removido com sucesso", Snackbar.LENGTH_SHORT).show()
+                    }
+                    setNegativeButton("Não") { _, _ ->
+                        Snackbar.make(activityMainBinding.root, "Operação cancelada", Snackbar.LENGTH_SHORT).show()
+                    }
+                    create()
+                }.show()
                 true
             }
             else -> { false }
